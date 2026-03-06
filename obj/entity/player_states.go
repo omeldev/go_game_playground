@@ -1,6 +1,8 @@
 package entity
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	"go_game_playground/math"
+)
 
 type IdleState struct {
 	player *Player
@@ -8,7 +10,6 @@ type IdleState struct {
 
 func (s *IdleState) Enter() {
 	s.player.Animation.SetAnimation("idle")
-	s.player.Velocity.X = 0
 }
 
 func (s *IdleState) Update(dt float64) {
@@ -23,7 +24,6 @@ type WalkLeftState struct {
 
 func (s *WalkLeftState) Enter() {
 	s.player.Animation.SetAnimation("walkLeft")
-	s.player.Velocity.X = -300
 }
 
 func (s *WalkLeftState) Update(dt float64) {
@@ -38,7 +38,6 @@ type WalkRightState struct {
 
 func (s *WalkRightState) Enter() {
 	s.player.Animation.SetAnimation("walkRight")
-	s.player.Velocity.X = 300
 }
 
 func (s *WalkRightState) Update(dt float64) {
@@ -47,12 +46,20 @@ func (s *WalkRightState) Update(dt float64) {
 func (s *WalkRightState) Exit() {
 }
 
-func (p *Player) HandleInput() {
-	if rl.IsKeyDown(rl.KeyA) {
-		p.StateMachine.ChangeState("walkLeft")
-	} else if rl.IsKeyDown(rl.KeyD) {
-		p.StateMachine.ChangeState("walkRight")
-	} else {
-		p.StateMachine.ChangeState("idle")
+type JumpState struct {
+	player *Player
+}
+
+func (s *JumpState) Enter() {
+	s.player.Animation.SetAnimation("jump")
+	s.player.Velocity.Y = math.JumpVelocity
+}
+
+func (s *JumpState) Update(dt float64) {
+	if math.IsOnGround(s.player.Position.Y) && s.player.Velocity.Y >= 0 {
+		s.player.StateMachine.ChangeState("idle")
 	}
+}
+
+func (s *JumpState) Exit() {
 }
