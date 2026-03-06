@@ -63,3 +63,25 @@ func (s *JumpState) Update(dt float64) {
 
 func (s *JumpState) Exit() {
 }
+
+type AngryState struct {
+	player   *Player
+	duration float64
+	elapsed  float64
+}
+
+func (s *AngryState) Enter() {
+	s.player.Animation.SetAnimation("angry")
+	s.elapsed = 0
+	s.duration = 0.3 // 0.3 Sekunden angry - schnelle Reaktion
+}
+
+func (s *AngryState) Update(dt float64) {
+	s.elapsed += dt
+	if s.elapsed >= s.duration {
+		s.player.StateMachine.ChangeState("idle")
+	}
+}
+
+func (s *AngryState) Exit() {
+}

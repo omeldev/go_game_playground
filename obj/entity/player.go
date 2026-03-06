@@ -11,6 +11,7 @@ import (
 type Player struct {
 	*sprite.Sprite
 	StateMachine *state.StateMachine
+	angryTimer   float64
 }
 
 func NewPlayer(x, y float64, animation *sprite.Animation) *Player {
@@ -29,6 +30,7 @@ func NewPlayer(x, y float64, animation *sprite.Animation) *Player {
 	player.StateMachine.AddState("walkLeft", &WalkLeftState{player: player})
 	player.StateMachine.AddState("walkRight", &WalkRightState{player: player})
 	player.StateMachine.AddState("jump", &JumpState{player: player})
+	player.StateMachine.AddState("angry", &AngryState{player: player})
 	player.StateMachine.ChangeState("idle")
 
 	return player
@@ -40,6 +42,15 @@ func (p *Player) Update(dt float64) {
 	p.applyGravity(dt)
 	p.Sprite.Update(dt)
 	p.resolveGroundCollision()
+
+	// Wenn wir noch im angry Timer sind und landen, gehe zurück zur angry Animation
+	if p.angryTimer > 0 {
+		p.angryTimer -= dt
+		if math.IsOnGround(p.Position.Y) && p.angryTimer > 0 && p.StateMachine.CurrentState != p.StateMachine.States["angry"] {
+			p.StateMachine.ChangeState("angry")
+			p.angryTimer = 0 // Reset nach Rückkehr
+		}
+	}
 }
 
 func (p *Player) applyGravity(dt float64) {
@@ -71,6 +82,11 @@ func (p *Player) HandleInput() {
 		p.Velocity.X = 0
 	}
 
+	// State-Wechsel ignorieren während angry State aktiv ist
+	if p.StateMachine.CurrentState == p.StateMachine.States["angry"] {
+		return
+	}
+
 	if !math.IsOnGround(p.Position.Y) {
 		return
 	}
@@ -82,4 +98,13 @@ func (p *Player) HandleInput() {
 	} else {
 		p.StateMachine.ChangeState("idle")
 	}
+}
+
+func (p *Player) ShowAngryReaction() {
+	// Nur zu angry State wechseln, wenn nicht bereits im angry State
+	if p.StateMachine.CurrentState == p.StateMachine.States["angry"] {
+		return
+	}
+	p.angryTimer = 1.5 // 1.5 Sekunden angry Countdown
+	p.StateMachine.ChangeState("angry")
 }

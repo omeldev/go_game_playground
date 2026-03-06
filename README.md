@@ -4,6 +4,16 @@
 
 ---
 
+### Features
+
+- Kamera folgt dem Spieler (zentriert auf der aktuellen Sprite).
+- Hintergrund wird als gekacheltes, unendliches Scrolling gezeichnet.
+
+### Controls
+
+- `A` / `D`: Laufen
+- `W` oder `SPACE`: Springen
+
 ### Requirements
 
 ```

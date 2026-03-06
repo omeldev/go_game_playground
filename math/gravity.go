@@ -1,10 +1,11 @@
 package math
 
 const (
-	Gravity       float64 = 2200.0
-	GroundEpsilon float64 = 0.0001
-	JumpVelocity  float64 = -900.0
-	MoveSpeed     float64 = 300.0
+	Gravity                  float64 = 2200.0
+	GroundEpsilon            float64 = 0.0001
+	JumpVelocity             float64 = -900.0
+	MoveSpeed                float64 = 300.0
+	CollectibleSpawnDistance float64 = 100.0
 )
 
 // GroundBaseline ist die globale Bodenhöhe für die Gravitation.
