@@ -1,0 +1,362 @@
+/******************************************************************************/
+/* profiler_console.go                                                        */
+/******************************************************************************/
+/*                            This file is part of                            */
+/*                                KAIJU ENGINE                                */
+/*                          https://kaijuengine.com/                          */
+/******************************************************************************/
+/* MIT License                                                                */
+/*                                                                            */
+/* Copyright (c) 2023-present Kaiju Engine authors (AUTHORS.md).              */
+/* Copyright (c) 2015-present Brent Farris.                                   */
+/*                                                                            */
+/* May all those that this source may reach be blessed by the LORD and find   */
+/* peace and joy in life.                                                     */
+/* Everyone who drinks of this water will be thirsty again; but whoever       */
+/* drinks of the water that I will give him shall never thirst; John 4:13-14  */
+/*                                                                            */
+/* Permission is hereby granted, free of charge, to any person obtaining a    */
+/* copy of this software and associated documentation files (the "Software"), */
+/* to deal in the Software without restriction, including without limitation  */
+/* the rights to use, copy, modify, merge, publish, distribute, sublicense,   */
+/* and/or sell copies of the Software, and to permit persons to whom the      */
+/* Software is furnished to do so, subject to the following conditions:       */
+/*                                                                            */
+/* The above copyright notice and this permission notice shall be included in */
+/* all copies or substantial portions of the Software.                        */
+/*                                                                            */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS    */
+/* OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF                 */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.     */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY       */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT  */
+/* OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE      */
+/* OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                              */
+/******************************************************************************/
+
+package profiler
+
+import (
+	"bufio"
+	"fmt"
+	"kaijuengine.com/engine"
+	"kaijuengine.com/engine/systems/console"
+	"kaijuengine.com/klib"
+	"kaijuengine.com/klib/contexts"
+	"kaijuengine.com/platform/profiler/tracing"
+	"os"
+	"os/exec"
+	"runtime"
+	"runtime/pprof"
+	"strings"
+	"time"
+)
+
+func consoleTop(host *engine.Host) string {
+	cmd := exec.Command("go", "tool", "pprof", "-top", pprofCPUFile)
+	out := klib.MustReturn(cmd.StdoutPipe())
+	scanner := bufio.NewScanner(out)
+	err := cmd.Start()
+	if err != nil {
+		return err.Error()
+	}
+	sb := strings.Builder{}
+	for scanner.Scan() {
+		sb.WriteString(scanner.Text() + "\n")
+	}
+	return sb.String()
+}
+
+func consoleMerge(host *engine.Host, argStr string) string {
+	// First arg in split will be "merge" and can be skipped
+	args := strings.Split(argStr, " ")[1:]
+	cmdArgs := make([]string, 0, len(args)+5)
+	cmdArgs = append(cmdArgs, "tool", "pprof", "-proto")
+	cmdArgs = append(cmdArgs, args...)
+	cmdArgs = append(cmdArgs, ">", pprofMergeFile)
+	cmd := exec.Command("go", cmdArgs...)
+	err := cmd.Start()
+	if err != nil {
+		return err.Error()
+	}
+	cmd.Wait()
+	return "Files merged into " + pprofMergeFile
+}
+
+func launchWeb(c *console.Console, webType, ctxKey string) (*contexts.Cancellable, error) {
+	ctx := contexts.NewCancellable()
+	targetFile := pprofCPUFile
+	args := []string{"tool"}
+	var procName, startMsg string
+	if webType == "trace" {
+		procName = "trace"
+		args = append(args, procName, traceFile)
+		startMsg = "Starting server on localhost"
+	} else {
+		if webType == "mem" {
+			targetFile = pprofHeapFile
+		}
+		procName = "pprof"
+		args = append(args, procName, "-http=:"+pprofWebPort, targetFile)
+		startMsg = "Starting server on localhost:" + pprofWebPort
+	}
+	cmd := exec.CommandContext(ctx, "go", args...)
+	err := cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		c.Write(startMsg)
+		<-ctx.Done()
+		cmd.Process.Kill()
+		c.DeleteData(ctxKey)
+		// Go tool spawns child process pprof.exe which is not killed by the above command
+		// So we need to kill it manually
+		if runtime.GOOS == "windows" {
+			killCmd := exec.Command("taskkill", "/F", "/IM", procName+".exe")
+			killCmd.Run()
+		} else {
+			// On mac, the child process is named pprof
+			killCmd := exec.Command("pkill", procName)
+			killCmd.Run()
+		}
+		if ctx.Err() == nil {
+			c.Write("Failed to start web server, make sure you have go and graphviz installed.")
+			ctx.Cancel()
+		}
+	}()
+	return ctx, err
+}
+
+func pprofStart(c *console.Console) string {
+	pprofFile := klib.MustReturn(os.Create(pprofCPUFile))
+	pprof.StartCPUProfile(pprofFile)
+	c.SetData(pprofFileKey, pprofFile)
+	return "CPU profile started"
+}
+
+func pprofStop(c *console.Console) string {
+	pprofFile, ok := c.Data(pprofFileKey).(*os.File)
+	if !ok || pprofFile == nil {
+		return "CPU profile not yet started"
+	}
+	pprof.StopCPUProfile()
+	pprofFile.Close()
+	return "CPU profile written to " + pprofCPUFile
+}
+
+func pprofHeap() string {
+	hp := klib.MustReturn(os.Create(pprofHeapFile))
+	pprof.WriteHeapProfile(hp)
+	hp.Close()
+	return "Heap profile written to " + pprofHeapFile
+}
+
+func webStart(c *console.Console, webType, ctxKey string) string {
+	ctx, ok := c.Data(ctxKey).(*contexts.Cancellable)
+	if ok && ctx != nil {
+		ctx.Cancel()
+		c.DeleteData(ctxKey)
+	}
+	if ctx, err := launchWeb(c, webType, ctxKey); err != nil {
+		return err.Error()
+	} else {
+		if !c.HasData(ctxKey) {
+			c.SetData(ctxKey, ctx)
+		}
+		return "Starting up web server..."
+	}
+}
+
+func pprofWebStop(c *console.Console) string {
+	ctx, ok := c.Data(pprofCtxDataKey).(*contexts.Cancellable)
+	if ok && ctx != nil {
+		ctx.Cancel()
+		ctx = nil
+		return "Web server stopped"
+	} else {
+		return "Web server not running"
+	}
+}
+
+func pprofWeb(c *console.Console, args []string) string {
+	if len(args) < 1 {
+		return `Expected "start" or "stop"`
+	}
+	switch args[0] {
+	case "mem":
+		fallthrough
+	case "cpu":
+		return webStart(c, args[0], pprofCtxDataKey)
+	case "stop":
+		return pprofWebStop(c)
+	default:
+		return `Expected "cpu" or "mem" or "stop"`
+	}
+}
+
+func pprofCommands(host *engine.Host, arg string) string {
+	c := console.For(host)
+	arg = klib.ReplaceStringRecursive(arg, "  ", " ")
+	args := strings.Split(arg, " ")
+	if args[0] == "mem" {
+		return pprofHeap()
+	}
+	if len(args) > 1 {
+		if args[0] == "start" {
+			return pprofStart(c)
+		} else if args[0] == "stop" {
+			return pprofStop(c)
+		} else if args[0] == "web" {
+			return pprofWeb(c, args[1:])
+		}
+	} else if args[0] == "top" {
+		return consoleTop(host)
+	} else if args[0] == "merge" {
+		return consoleMerge(host, arg)
+	}
+	return ""
+}
+
+func traceStart() string {
+	if err := StartTrace(); err != nil {
+		return err.Error()
+	} else {
+		return "Trace started"
+	}
+}
+
+func traceStop() string {
+	if err := StopTrace(); err != nil {
+		return err.Error()
+	} else {
+		return "Trace stopped"
+	}
+}
+
+func traceReview() (string, error) {
+	cmd := exec.Command("gotraceui", traceFile)
+	if err := cmd.Start(); err != nil {
+		return fmt.Sprintf("Failed to start gotraceui: %v", err), err
+	}
+	return "Started gotraceui for the trace", nil
+}
+
+func traceWeb(c *console.Console, args []string) string {
+	if len(args) < 1 {
+		return `Expected "start" or "stop"`
+	}
+	switch args[0] {
+	case "start":
+		return webStart(c, "trace", traceCtxDataKey)
+	case "stop":
+		return traceWebStop(c)
+	default:
+		return `Expected "start" or "stop"`
+	}
+}
+
+func traceWebStop(c *console.Console) string {
+	ctx, ok := c.Data(traceCtxDataKey).(*contexts.Cancellable)
+	if ok && ctx != nil {
+		ctx.Cancel()
+		ctx = nil
+		return "Web server stopped"
+	} else {
+		return "Web server not running"
+	}
+}
+
+func traceCommands(host *engine.Host, arg string) string {
+	c := console.For(host)
+	arg = klib.ReplaceStringRecursive(arg, "  ", " ")
+	args := strings.Split(arg, " ")
+	switch args[0] {
+	case "start":
+		return traceStart()
+	case "stop":
+		return traceStop()
+	case "review":
+		s, _ := traceReview()
+		return s
+	case "web":
+		return traceWeb(c, args[1:])
+	default:
+		return `Expected "start" or "stop" or "web"`
+	}
+}
+
+func gc(host *engine.Host, arg string) string {
+	runtime.GC()
+	return "Garbage collection done"
+}
+
+func memStats(host *engine.Host, arg string) string {
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	return fmt.Sprintf(`---------
+Time: %s
+Goroutines: %d
+NumCPU: %d
+
+Alloc: %s (memory currently allocated to Go objects)
+TotalAlloc: %s (cumulative bytes allocated, even if freed)
+Sys: %s (total memory obtained from OS - closest to Task Manager)
+HeapAlloc: %s (same as Alloc)
+HeapSys: %s (memory reserved for heap from OS)
+HeapIdle: %s (idle heap memory)
+HeapInuse: %s (heap memory in active use)
+HeapReleased: %s (returned to OS)
+HeapObjects: %d (number of allocated objects)
+
+Stack (in use): %s (current stack memory used)
+Stack (sys): %s (stack memory reserved from OS)
+MSpan/MSpanSys: %s / %s
+MCache/MCacheSys: %s / %s
+
+GC: NextGC at: %s
+GC: LastGC: %s ago
+GC Count: %d
+GC CPU Fraction: %.4f%% (of total CPU time spent in GC)
+GOMAXPROCS: %d
+---------`,
+		time.Now().Format("15:04:05.000"),
+		runtime.NumGoroutine(),
+		runtime.NumCPU(),
+		klib.ByteCountToString(mem.Alloc),
+		klib.ByteCountToString(mem.TotalAlloc),
+		klib.ByteCountToString(mem.Sys),
+		klib.ByteCountToString(mem.HeapAlloc),
+		klib.ByteCountToString(mem.HeapSys),
+		klib.ByteCountToString(mem.HeapIdle),
+		klib.ByteCountToString(mem.HeapInuse),
+		klib.ByteCountToString(mem.HeapReleased),
+		mem.HeapObjects,
+		klib.ByteCountToString(mem.StackInuse),
+		klib.ByteCountToString(mem.StackSys),
+		klib.ByteCountToString(mem.MSpanInuse), klib.ByteCountToString(mem.MSpanSys),
+		klib.ByteCountToString(mem.MCacheInuse), klib.ByteCountToString(mem.MCacheSys),
+		klib.ByteCountToString(mem.NextGC),
+		time.Since(time.Unix(0, int64(mem.LastGC))).Round(time.Millisecond),
+		mem.NumGC,
+		mem.GCCPUFraction*100,
+		runtime.GOMAXPROCS(0),
+	)
+}
+
+func SetupConsole(host *engine.Host) {
+	defer tracing.NewRegion("profiler.SetupConsole").End()
+	c := console.For(host)
+	c.AddCommand("pprof", "Run profiler commands: 'mem' for heap, 'start/stop' for performance capture. View with 'web cpu', 'web mem', and end with 'web stop'", pprofCommands)
+	c.AddCommand("trace", "Run trace commands like 'start', 'stop'. After stopping gotraceui will automatically show", traceCommands)
+	host.OnClose.Add(func() {
+		if c.HasData(pprofCtxDataKey) {
+			c.Data(pprofCtxDataKey).(*contexts.Cancellable).Cancel()
+		}
+		if c.HasData(traceCtxDataKey) {
+			c.Data(traceCtxDataKey).(*contexts.Cancellable).Cancel()
+		}
+	})
+	console.For(host).AddCommand("gc", "Forces garbage collection", gc)
+	console.For(host).AddCommand("memstats", "Shows current memory stats", memStats)
+}

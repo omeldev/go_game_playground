@@ -1,0 +1,83 @@
+site_name: Kaiju Engine
+site_description: 'The official documentation for the Kaiju game engine'
+site_author: 'Brent Farris'
+docs_dir: docs/
+repo_name: 'KaijuEngine/kaiju'
+repo_url: 'https://github.com/KaijuEngine/kaiju'
+nav:
+  - Home: index.md
+  - Blog: blog/index.md
+  - Getting started:
+    - With editor: getting_started/start_with_editor.md
+    - Without editor: getting_started/start_without_editor.md
+  - Kaiju Editor:
+    - Stage: editor/stage.md
+    - Content:
+      - Content workspace: editor/content/workspace.md
+      - Reference viewer: editor/content/reference_viewer.md
+      - Table of contents: editor/content/table_of_contents.md
+    - Shading: editor/shading.md
+    - VFX (particles): editor/vfx.md
+    - UI: editor/ui.md
+    - Settings: editor/settings.md
+    - Programming:
+      - Data Binding: editor/programming/data_binding.md
+    - Plugins: editor/plugins.md
+  - Kaiju Engine:
+    - Design goals: engine/design_goals.md
+    - Build from source: engine/build_from_source.md
+    - Build tags: engine/build_tags.md
+    - Performance profiling: engine/performance_profiling.md
+    - Building new fonts: engine/fonts/building_fonts.md
+    - UI:
+      - Writing: engine/ui/writing.md
+      - Preview: engine/ui/preview.md
+      - Go access: engine/ui/go_access.md
+      - HTML attributes: engine/ui/html_attributes.md
+  - API: api/
+  - Community:
+    - GitHub: https://github.com/KaijuEngine/kaiju
+    - Creator X: https://twitter.com/ShieldCrush
+    - Discord: https://discord.gg/8rFPEu8U52
+  - Sponsor Kaiju: https://github.com/sponsors/BrentFarris
+theme:
+  name: 'material'
+  icon:
+    annotation: material/chevron-right-circle
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.sections
+    - navigation.instant
+    - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/link
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: red
+      accent: deep orange
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: red
+      accent: deep orange
+      toggle:
+        icon: material/toggle-switch-off
+        name: Switch to system preference
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+extra_css:
+  - stylesheets/style.css
+extra_javascript:
+  - javascripts/script.js
