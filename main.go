@@ -1,6 +1,9 @@
 package main
 
 import (
+	"go_game_playground/obj/entity"
+	"go_game_playground/obj/sprite"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -15,17 +18,23 @@ func main() {
 	rl.SetTargetFPS(60)
 
 	imgBg := rl.LoadTexture("resources/bg.png")
-	//imgAngryLeft := rl.LoadTexture("resources/gophers/angry_left.png")
-	//imgAngryRight := rl.LoadTexture("resources/gophers/angry_right.png")
-	//imgRunLeft := rl.LoadTexture("resources/gophers/run_left.png")
-	//imgRunRight := rl.LoadTexture("resources/gophers/run_right.png")
 	imgWalkLeft := rl.LoadTexture("resources/gophers/walk_left.png")
 	imgWalkRight := rl.LoadTexture("resources/gophers/walk_right.png")
+	imgIdle := rl.LoadTexture("resources/gophers/walk_right.png")
 
-	playerPos := rl.Vector2{X: 0, Y: 450}
-	imgWalk := imgWalkRight
+	anim := sprite.NewAnimation()
+	anim.AddFrame("idle", imgIdle)
+	anim.AddFrame("walkLeft", imgWalkLeft)
+	anim.AddFrame("walkRight", imgWalkRight)
+	anim.SetAnimation("idle")
+
+	player := entity.NewPlayer(0, 450, anim)
 
 	for !rl.WindowShouldClose() {
+
+		dt := rl.GetFrameTime()
+
+		player.Update(float64(dt))
 
 		rl.BeginDrawing()
 
@@ -33,34 +42,15 @@ func main() {
 
 		rl.DrawTextureEx(
 			imgBg,
-			rl.Vector2{
-				X: 0,
-				Y: 0,
-			},
+			rl.Vector2{X: 0, Y: 0},
 			0.0,
 			1.0,
 			rl.White,
 		)
 
-		rl.DrawTextureEx(
-			imgWalk,
-			playerPos,
-			0.0,
-			0.2,
-			rl.White,
-		)
+		player.Draw()
 
-		if rl.IsKeyDown(rl.KeyA) {
-			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.Green)
-			playerPos.X = playerPos.X - 1
-			imgWalk = imgWalkLeft
-		} else if rl.IsKeyDown(rl.KeyD) {
-			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.Red)
-			playerPos.X = playerPos.X + 1
-			imgWalk = imgWalkRight
-		} else {
-			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.LightGray)
-		}
+		rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.LightGray)
 
 		rl.EndDrawing()
 

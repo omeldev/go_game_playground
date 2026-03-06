@@ -1,4 +1,4 @@
-module super-gopher-bros
+module go_game_playground
 
 go 1.26
 
