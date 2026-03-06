@@ -4,9 +4,12 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+const windowWidth = 800
+const windowHeight = 600
+
 func main() {
 
-	rl.InitWindow(800, 600, "Super Gopher Bros")
+	rl.InitWindow(windowWidth, windowHeight, "Super Gopher Bros")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(60)
@@ -48,15 +51,15 @@ func main() {
 		)
 
 		if rl.IsKeyDown(rl.KeyA) {
-			rl.DrawText("Congrats! You created your first window!", 190, 200, 20, rl.Green)
+			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.Green)
 			playerPos.X = playerPos.X - 1
 			imgWalk = imgWalkLeft
 		} else if rl.IsKeyDown(rl.KeyD) {
-			rl.DrawText("Congrats! You created your first window!", 190, 200, 20, rl.Red)
+			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.Red)
 			playerPos.X = playerPos.X + 1
 			imgWalk = imgWalkRight
 		} else {
-			rl.DrawText("Congrats! You created your first window!", 190, 200, 20, rl.LightGray)
+			rl.DrawText("Congrats! You created your first window!", windowWidth/3, windowHeight/4, 20, rl.LightGray)
 		}
 
 		rl.EndDrawing()
