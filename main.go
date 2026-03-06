@@ -3,22 +3,26 @@ package main
 import (
 	"fmt"
 	"go_game_playground/game"
+	"go_game_playground/internal/camera"
+	"go_game_playground/internal/rendering"
 	"go_game_playground/obj/entity"
 	"go_game_playground/obj/sprite"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const windowWidth = 800
-const windowHeight = 600
+const (
+	windowWidth  = 800
+	windowHeight = 600
+)
 
 func main() {
-
 	rl.InitWindow(windowWidth, windowHeight, "Super Gopher Bros")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(60)
 
+	// Load textures
 	imgBg := rl.LoadTexture("resources/bg.png")
 	defer rl.UnloadTexture(imgBg)
 
@@ -31,58 +35,61 @@ func main() {
 	imgIdle := rl.LoadTexture("resources/gophers/walk_right.png")
 	defer rl.UnloadTexture(imgIdle)
 
-	imgAngryLeft := rl.LoadTexture("resources/gophers/angry_left.png")
-	defer rl.UnloadTexture(imgAngryLeft)
-
 	imgAngryRight := rl.LoadTexture("resources/gophers/angry_right.png")
 	defer rl.UnloadTexture(imgAngryRight)
 
 	imgCookie := rl.LoadTexture("resources/cookie/cookie.png")
 	defer rl.UnloadTexture(imgCookie)
 
-	anim := sprite.NewAnimation()
-	anim.AddFrame("idle", imgIdle)
-	anim.AddFrame("walkLeft", imgWalkLeft)
-	anim.AddFrame("walkRight", imgWalkRight)
-	anim.AddFrame("angry", imgAngryRight)
-	anim.SetAnimation("idle")
+	// Setup player animation
+	playerAnim := sprite.NewAnimation()
+	playerAnim.AddFrame("idle", imgIdle)
+	playerAnim.AddFrame("walkLeft", imgWalkLeft)
+	playerAnim.AddFrame("walkRight", imgWalkRight)
+	playerAnim.AddFrame("angry", imgAngryRight)
+	playerAnim.SetAnimation("idle")
 
+	// Setup cookie animation
 	cookieAnim := sprite.NewAnimation()
 	cookieAnim.AddFrame("default", imgCookie)
 	cookieAnim.SetAnimation("default")
 
-	player := entity.NewPlayer(0, 450, anim)
+	// Initialize game entities
+	player := entity.NewPlayer(0, 450, playerAnim)
 	gameInstance := game.NewGame(player, windowWidth, windowHeight, 10)
-	camera := NewPlayerFollowCamera(player)
+	playerCamera := camera.NewPlayerFollowCamera(player, windowWidth, windowHeight)
 
 	spawnTimer := 0.0
 
 	for !rl.WindowShouldClose() {
-
 		dt := rl.GetFrameTime()
 
+		// Spawn cookies periodically
 		spawnTimer += float64(dt)
 		if spawnTimer > 2.0 {
 			gameInstance.SpawnCookie(cookieAnim)
 			spawnTimer = 0.0
 		}
 
+		// Update game state
 		gameInstance.Update(float64(dt))
-		UpdatePlayerFollowCamera(&camera, player)
+		playerCamera.Update(player)
 
+		// Render
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
-		rl.BeginMode2D(camera)
-		DrawInfiniteBackground(imgBg, camera, windowWidth, windowHeight)
+		rl.BeginMode2D(playerCamera.Camera2D)
+		rendering.DrawInfiniteBackground(imgBg, playerCamera.Camera2D, windowWidth, windowHeight)
 		gameInstance.Draw()
 		rl.EndMode2D()
 
-		// Cookie counter - fix oben rechts auf dem Bildschirm in schwarz
+		// UI - Cookie counter
 		counterText := fmt.Sprintf("Cookies: %d", gameInstance.CollectibleCount)
 		textWidth := rl.MeasureText(counterText, 20)
 		rl.DrawText(counterText, int32(windowWidth)-textWidth-16, 16, 20, rl.Black)
 
+		// UI - Controls and FPS
 		rl.DrawText("WASD bewegen, SPACE/W springen", 16, 16, 20, rl.LightGray)
 		rl.DrawFPS(10, 30)
 		rl.EndDrawing()
