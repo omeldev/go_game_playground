@@ -13,11 +13,15 @@ func main() {
 
 	rl.SetTargetFPS(60)
 
-	playerPos := rl.Vector2{X: 0, Y: 450}
-
 	imgBg := rl.LoadTexture("resources/bg.png")
-	imgWalkLeft := rl.LoadTexture("resources/gophers/walk_a_left.png")
-	imgWalkRight := rl.LoadTexture("resources/gophers/walk_a_right.png")
+	//imgAngryLeft := rl.LoadTexture("resources/gophers/angry_left.png")
+	//imgAngryRight := rl.LoadTexture("resources/gophers/angry_right.png")
+	//imgRunLeft := rl.LoadTexture("resources/gophers/run_left.png")
+	//imgRunRight := rl.LoadTexture("resources/gophers/run_right.png")
+	imgWalkLeft := rl.LoadTexture("resources/gophers/walk_left.png")
+	imgWalkRight := rl.LoadTexture("resources/gophers/walk_right.png")
+
+	playerPos := rl.Vector2{X: 0, Y: 450}
 	imgWalk := imgWalkRight
 
 	utils.Foo()
