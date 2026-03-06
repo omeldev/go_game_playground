@@ -1,8 +1,17 @@
-Game in Go
+# Game in Go
 
 [Cheatsheet](https://www.raylib.com/cheatsheet/cheatsheet.html)
 
-Install requirements
+---
+
+### Requirements
+
 ```
 sudo apt-get install libgl1-mesa-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev libwayland-dev libxkbcommon-dev
 ```
+
+### Attribution
+
+Background Image: https://opengameart.org/content/country-side-platform-tiles
+Author: ansimuz
+License: CC0
