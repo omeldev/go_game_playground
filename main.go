@@ -1,8 +1,6 @@
 package main
 
 import (
-	utils "super-gopher-bros/internal"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -23,9 +21,6 @@ func main() {
 
 	playerPos := rl.Vector2{X: 0, Y: 450}
 	imgWalk := imgWalkRight
-
-	utils.Foo()
-	utils.Bar()
 
 	for !rl.WindowShouldClose() {
 
