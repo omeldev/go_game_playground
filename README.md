@@ -15,3 +15,7 @@ sudo apt-get install libgl1-mesa-dev libxi-dev libxcursor-dev libxrandr-dev libx
 Background Image: https://opengameart.org/content/country-side-platform-tiles
 Author: ansimuz
 License: CC0
+
+Gopher Images: https://github.com/MariaLetta/free-gophers-pack
+Author: Maria Letta
+License: CC0
